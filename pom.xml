@@ -7,7 +7,7 @@
     <groupId>telran.monitoring</groupId>
     <artifactId>pulse-monitoring-parent</artifactId>
     <version>0.0.1</version>
-    <packaging></packaging>
+    <packaging>pom</packaging>
 
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
@@ -36,7 +36,8 @@
     </dependencyManagement>
 
     <modules>
-    
+    <module>middleware-data-streams-impl</module>
+    <module>data-provisioning-source</module>
     </modules>
 
 </project>
