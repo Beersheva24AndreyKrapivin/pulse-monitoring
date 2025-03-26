@@ -1,0 +1,11 @@
+telran\monitoring\DynamoDbStreamJumpPulseData$1.class
+telran\monitoring\TestStream.class
+telran\monitoring\DynamoDbStreamNotificationData.class
+telran\monitoring\DynamoDbStreamNotificationData$1.class
+telran\monitoring\MiddlewareDataStreamFactory.class
+telran\monitoring\DynamoDbStream.class
+telran\monitoring\DynamoDbStreamSensorData.class
+telran\monitoring\DynamoDbStreamSensorData$1.class
+telran\monitoring\DynamoDbAbnormalPulseValueStream.class
+telran\monitoring\DynamoDbStreamJumpPulseData.class
+telran\monitoring\DynamoDbAbnormalPulseValueStream$1.class

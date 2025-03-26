@@ -1,0 +1,322 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Globals:
+  Function:
+    Timeout: 20
+    Runtime: java21
+    MemorySize: 512
+    Architectures:
+      - x86_64
+Resources:
+
+  JumpRecognizerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: jump-pulse-recognizer
+      Handler: telran.monitoring.App::handleRequest
+      Policies:
+        - Statement:
+          - Effect: Allow
+            Resource: '*' 
+            Action:
+            - dynamodb:*
+        - S3WritePolicy:
+            BucketName: !Ref JumpPulseRecognizerBucket
+        - S3ReadPolicy:
+            BucketName: !Ref JumpPulseRecognizerBucket
+      Environment:
+        Variables:
+          LOGGER_LEVEL: finest
+          STREAM_NAME: !Ref JumpDataStream
+          STREAM_CLASS_NAME: telran.monitoring.DynamoDbStreamJumpPulseData
+          SAVER_CLASS_NAME: telran.monitoring.LatestDataSaverS3
+          S3_BUCKET_NAME: !Ref JumpPulseRecognizerBucket
+      Events:
+        DynamoDbItemInsert:
+          Type: DynamoDB
+          Properties:
+            StartingPosition: LATEST
+            BatchSize: 1
+            Stream: !GetAtt PulseValuesStream.StreamArn
+            FilterCriteria:
+              Filters:
+              - Pattern: '{"eventName": ["INSERT"]}'
+
+  JumpPulseRecognizerBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "jump-pulse-recognizer-bucket-${AWS::AccountId}-${AWS::Region}"
+      AccessControl: Private
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  PulseValuesReducerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: pulse-values-reduces
+      Handler: telran.monitoring.AppReducer::handleRequest
+      Policies:
+        - Statement:
+          - Effect: Allow
+            Resource: '*' 
+            Action:
+            - dynamodb:*
+            - s3:*
+        - S3WritePolicy:
+            BucketName: !Ref PulseValuesReducerBucket
+        - S3ReadPolicy:
+            BucketName: !Ref PulseValuesReducerBucket
+      Environment:
+        Variables:
+          LOGGER_LEVEL: finest
+          STREAM_NAME: !Ref AvgValuesDataStream
+          REDUCING_SIZE: 5
+          REDUCING_TIME_WINDOW: 600000
+          STREAM_CLASS_NAME: telran.monitoring.DynamoDbStreamSensorData
+          SAVER_CLASS_NAME: telran.monitoring.LatestDataSaverS3
+          S3_BUCKET_NAME: !Ref PulseValuesReducerBucket
+      Events:
+        DynamoDbItemInsert:
+          Type: DynamoDB
+          Properties:
+            StartingPosition: LATEST
+            BatchSize: 1
+            Stream: !GetAtt PulseValuesStream.StreamArn
+            FilterCriteria:
+              Filters:
+              - Pattern: '{"eventName": ["INSERT"]}'
+
+  PulseValuesReducerBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: !Sub "pulse-values-reducer-bucket-${AWS::AccountId}-${AWS::Region}"
+      AccessControl: Private
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  PulseAbnormalValuesRecognizerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: abnormal-values-recognizer
+      Handler: telran.monitoring.AppAbnormalRecognizer::handleRequest
+      FunctionName: abnormal-values-recognizer
+      Policies:
+        - Statement:
+          - Effect: Allow
+            Resource: '*' 
+            Action:
+            - dynamodb:*
+            - s3:*
+      Environment:
+        Variables:
+          LOGGER_LEVEL: finest
+          STREAM_NAME: !Ref AbnormalValuesDataStream
+          RANGE_PROVIDER_CLASS: telran.monitoring.RangeProviderClientHttp
+          STREAM_CLASS_NAME: telran.monitoring.DynamoDbAbnormalPulseValueStream
+          SAVER_CLASS_NAME: telran.monitoring.LatestDataSaverS3
+          RANGE_PROVIDER_URL: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/range/"
+      Events:
+        DynamoDbItemInsert:
+          Type: DynamoDB
+          Properties:
+            StartingPosition: LATEST
+            BatchSize: 1
+            Stream: !GetAtt PulseValuesStream.StreamArn
+            FilterCriteria:
+              Filters:
+              - Pattern: '{"eventName": ["INSERT"]}'  
+
+  RangeDataProviderFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: range-data-provider
+      Handler: telran.monitoring.AppRangeDataProvider::handleRequest
+      
+      Environment: 
+        Variables:
+          DB_PASSWORD: 1234.Com
+      Events:
+        RangeDataProvider:
+          Type: Api 
+          Properties:
+            Path: /range
+            Method: get
+
+  EmailAddressProviderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: email-address-provider
+      Handler: telran.monitoring.AppEmailAddressProvider::handleRequest
+      
+      Environment: 
+        Variables:
+          DB_PASSWORD: 1234.Com
+      Events:
+        RangeDataProvider:
+          Type: Api 
+          Properties:
+            Path: /emailnotification
+            Method: get
+
+  AbnormalValuesEmailNotifierFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: abnormal-values-email-notifier
+      Handler: telran.monitoring.AppAbnormalValuesEmailNotifier::handleRequest
+      Policies:
+        - Statement:
+          - Effect: Allow
+            Resource: '*' 
+            Action:
+            - dynamodb:*
+            - ses:SendEmail
+      Environment:
+        Variables:
+          LOGGER_LEVEL: finest
+          STREAM_NAME: !Ref AbnormalValuesEmailNotifierDataStream
+          EMAIL_PROVIDER_CLASS: telran.monitoring.EmailProviderClientHttp
+          STREAM_CLASS_NAME: telran.monitoring.DynamoDbStreamNotificationData
+          SAVER_CLASS_NAME: telran.monitoring.LatestDataSaverS3
+          EMAIL_PROVIDER_URL: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/emailnotification/"
+      Events:
+        DynamoDbItemInsert:
+          Type: DynamoDB
+          Properties:
+            StartingPosition: LATEST
+            BatchSize: 1
+            Stream: !GetAtt AbnormalValuesDataStream.StreamArn
+            FilterCriteria:
+              Filters:
+              - Pattern: '{"eventName": ["INSERT"]}'
+            
+  PulseValuesStream:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: pulse_values
+      KeySchema:
+        - AttributeName: patientId
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      AttributeDefinitions:
+        - AttributeName: patientId
+          AttributeType: N
+        - AttributeName: timestamp
+          AttributeType: N
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      StreamSpecification:
+        StreamViewType: NEW_IMAGE
+
+  JumpDataStream:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      KeySchema:
+        - AttributeName: patientId
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      AttributeDefinitions:
+        - AttributeName: patientId
+          AttributeType: N
+        - AttributeName: timestamp
+          AttributeType: N     
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      StreamSpecification:
+        StreamViewType: NEW_IMAGE
+
+  AvgValuesDataStream:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      KeySchema:
+        - AttributeName: patientId
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      AttributeDefinitions:
+        - AttributeName: patientId
+          AttributeType: N
+        - AttributeName: timestamp
+          AttributeType: N     
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      StreamSpecification:
+        StreamViewType: NEW_IMAGE    
+
+  AbnormalValuesDataStream:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      KeySchema:
+        - AttributeName: patientId
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      AttributeDefinitions:
+        - AttributeName: patientId
+          AttributeType: N
+        - AttributeName: timestamp
+          AttributeType: N     
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      StreamSpecification:
+        StreamViewType: NEW_IMAGE
+
+  AbnormalValuesEmailNotifierDataStream:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      KeySchema:
+        - AttributeName: patientId
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      AttributeDefinitions:
+        - AttributeName: patientId
+          AttributeType: N
+        - AttributeName: timestamp
+          AttributeType: N     
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      StreamSpecification:
+        StreamViewType: NEW_IMAGE      
+
+Outputs:
+  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
+  # Find out more about other implicit resources you can reference within SAM
+  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
+  RangeDataProviderApi:
+    Description: "API Gateway endpoint URL for Prod stage for Range Data Provider Function"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/range/"
+  EmailAddressProviderApi:
+    Description: "API Gateway endpoint URL for Prod stage for Email Address Provider Function"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/emailnotification/"
+  JumpPulseRecognizerBucketName:
+    Description: "S3 Bucket for jump-pulse-recognizer"
+    Value: !Ref JumpPulseRecognizerBucket
+  PulseValuesReducerBucketName:
+    Description: "S3 Bucket for pulse-values-reducer"
+    Value: !Ref PulseValuesReducerBucket

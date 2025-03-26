@@ -1,0 +1,129 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "type": "java",
+        "name": "Main",
+        "request": "launch",
+        "mainClass": "telran.monitoring.Main",
+        "projectName": "pulse-values-imitator"
+      },
+      {
+        "type": "java",
+        "name": "Main",
+        "request": "launch",
+        "mainClass": "telran.monitoring.Main",
+        "projectName": "pulse-values-receiver"
+      },
+      {
+        "type": "aws-sam",
+        "request": "direct-invoke",
+        "name": "pulse_monitoring:PulseAbnormalValuesRecognizerFunction (java21)",
+        "invokeTarget": {
+          "target": "template",
+          "templatePath": "${workspaceFolder}/template.yaml",
+          "logicalId": "PulseAbnormalValuesRecognizerFunction"
+        },
+        "lambda": {
+          "payload": {
+            "path": "${workspaceFolder}/events/pulse_values_for_abnormal.json"
+          },
+          "environmentVariables": {
+            "LOGGER_LEVEL": "finest",
+            "STREAM_NAME": "abnormal-pulse-values",
+            "STREAM_CLASS_NAME": "telran.monitoring.TestStream",
+            "RANGE_PROVIDER_CLASS": "telran.monitoring.RangeProviderClientMap"
+          }
+        }
+      },
+      {
+        "type": "aws-sam",
+        "request": "direct-invoke",
+        "name": "pulse_monitoring:JumpRecognizerFunction (java21)",
+        "invokeTarget": {
+          "target": "template",
+          "templatePath": "${workspaceFolder}/template.yaml",
+          "logicalId": "JumpRecognizerFunction"
+        },
+        "lambda": {
+          "payload": {
+            "path": "${workspaceFolder}/events/pulse_values.json"
+          },
+          "environmentVariables": {
+            "LOGGER_LEVEL": "finest",
+            "STREAM_NAME": "jump-pulse-value",
+            "STREAM_CLASS_NAME": "telran.monitoring.TestStream",
+            "SAVER_CLASS_NAME": "telran.monitoring.LatestDataSaverS3",
+            "S3_BUCKET_NAME": "jump-pulse-recognizer-bucket-820242910367-us-east-1  I"
+          }
+        }
+      },
+      {
+        "type": "aws-sam",
+        "request": "direct-invoke",
+        "name": "pulse_monitoring:AbnormalValuesEmailNotifierFunction (java21)",
+        "invokeTarget": {
+          "target": "template",
+          "templatePath": "${workspaceFolder}/template.yaml",
+          "logicalId": "AbnormalValuesEmailNotifierFunction"
+        },
+        "lambda": {
+          "payload": {
+            "path": "${workspaceFolder}/events/abnormal_values_email.json"
+          },
+          "environmentVariables": {
+            "LOGGER_LEVEL": "finest",
+            "STREAM_NAME": "abnormal-values-email-notifier",
+            "STREAM_CLASS_NAME": "telran.monitoring.TestStream",
+            "EMAIL_PROVIDER_CLASS": "telran.monitoring.EmailProviderClientHttp",
+            "EMAIL_PROVIDER_URL": "https://l5pfa7t8s4.execute-api.us-east-1.amazonaws.com/Prod/emailnotification"
+          }
+        }
+      },
+      {
+        "type": "aws-sam",
+        "request": "direct-invoke",
+        "name": "pulse_monitoring:PulseValuesReducerFunction (java21)",
+        "invokeTarget": {
+          "target": "template",
+          "templatePath": "${workspaceFolder}/template.yaml",
+          "logicalId": "PulseValuesReducerFunction"
+        },
+        "lambda": {
+          "payload": {
+            "path": "${workspaceFolder}/events/pulse_values.json"
+          },
+          "environmentVariables": {
+            "LOGGER_LEVEL": "finest",
+            "STREAM_NAME": "average-pulse-values",
+            "REDUCING_SIZE": "2",
+            "REDUCING_TIME_WINDOW": "60000000000000",
+            "STREAM_CLASS_NAME": "telran.monitoring.TestStream",
+            "SAVER_CLASS_NAME": "telran.monitoring.LatestDataSaverS3",
+            "S3_BUCKET_NAME": "pulse-values-reducer-bucket-820242910367-us-east-1"
+          }
+        }
+      },
+      {
+        "type": "aws-sam",
+        "request": "direct-invoke",
+        "name": "pulse_monitoring:RangeDataProviderFunction (java21)",
+        "invokeTarget": {
+          "target": "template",
+          "templatePath": "${workspaceFolder}/template.yaml",
+          "logicalId": "RangeDataProviderFunction"
+        },
+        "lambda": {
+          "payload": {
+            "path": "${workspaceFolder}/events/range_data_provider.json"
+          },
+          "environmentVariables": {
+            "DB_PASSWORD": "12345.Com"
+          }
+        }
+      }
+    ]
+  }

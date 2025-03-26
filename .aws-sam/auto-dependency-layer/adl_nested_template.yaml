@@ -1,0 +1,92 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS SAM CLI Nested Stack for Auto Dependency Layer Creation
+Metadata:
+  SamCliInfo: 1.134.0
+  key: AWS SAM CLI sync command
+Outputs:
+  AbnormalValuesEmailNotifierFunctionaf3aa12fDepLayer:
+    Value:
+      Ref: AbnormalValuesEmailNotifierFunctionaf3aa12fDepLayer
+  EmailAddressProviderFunctionb8f64500DepLayer:
+    Value:
+      Ref: EmailAddressProviderFunctionb8f64500DepLayer
+  JumpRecognizerFunction3a271a78DepLayer:
+    Value:
+      Ref: JumpRecognizerFunction3a271a78DepLayer
+  PulseAbnormalValuesRecognizerFunctionb5c10192DepLayer:
+    Value:
+      Ref: PulseAbnormalValuesRecognizerFunctionb5c10192DepLayer
+  PulseValuesReducerFunctioncfd30f6dDepLayer:
+    Value:
+      Ref: PulseValuesReducerFunctioncfd30f6dDepLayer
+  RangeDataProviderFunctionfd9e203aDepLayer:
+    Value:
+      Ref: RangeDataProviderFunctionfd9e203aDepLayer
+Resources:
+  AbnormalValuesEmailNotifierFunctionaf3aa12fDepLayer:
+    Metadata:
+      CreatedBy: AWS SAM CLI sync command
+    Properties:
+      CompatibleRuntimes:
+      - java21
+      ContentUri: D:\Programming\TelRan\Beersheva24\pulse-monitoring\.aws-sam\auto-dependency-layer\AbnormalValuesEmailNotifierFunctionaf3aa12fDepLayer
+      Description: Auto created layer for dependencies of function AbnormalValuesEmailNotifierFunction
+      LayerName: pulseMonitoringbeabc141-AbnormalValuesEmailNotaf3aa12f-DepLayer
+      RetentionPolicy: Delete
+    Type: AWS::Serverless::LayerVersion
+  EmailAddressProviderFunctionb8f64500DepLayer:
+    Metadata:
+      CreatedBy: AWS SAM CLI sync command
+    Properties:
+      CompatibleRuntimes:
+      - java21
+      ContentUri: D:\Programming\TelRan\Beersheva24\pulse-monitoring\.aws-sam\auto-dependency-layer\EmailAddressProviderFunctionb8f64500DepLayer
+      Description: Auto created layer for dependencies of function EmailAddressProviderFunction
+      LayerName: pulseMonitoringbeabc141-EmailAddressProviderFub8f64500-DepLayer
+      RetentionPolicy: Delete
+    Type: AWS::Serverless::LayerVersion
+  JumpRecognizerFunction3a271a78DepLayer:
+    Metadata:
+      CreatedBy: AWS SAM CLI sync command
+    Properties:
+      CompatibleRuntimes:
+      - java21
+      ContentUri: D:\Programming\TelRan\Beersheva24\pulse-monitoring\.aws-sam\auto-dependency-layer\JumpRecognizerFunction3a271a78DepLayer
+      Description: Auto created layer for dependencies of function JumpRecognizerFunction
+      LayerName: pulseMonitoringbeabc141-JumpRecognizerFunction3a271a78-DepLayer
+      RetentionPolicy: Delete
+    Type: AWS::Serverless::LayerVersion
+  PulseAbnormalValuesRecognizerFunctionb5c10192DepLayer:
+    Metadata:
+      CreatedBy: AWS SAM CLI sync command
+    Properties:
+      CompatibleRuntimes:
+      - java21
+      ContentUri: D:\Programming\TelRan\Beersheva24\pulse-monitoring\.aws-sam\auto-dependency-layer\PulseAbnormalValuesRecognizerFunctionb5c10192DepLayer
+      Description: Auto created layer for dependencies of function PulseAbnormalValuesRecognizerFunction
+      LayerName: pulseMonitoringbeabc141-PulseAbnormalValuesRecb5c10192-DepLayer
+      RetentionPolicy: Delete
+    Type: AWS::Serverless::LayerVersion
+  PulseValuesReducerFunctioncfd30f6dDepLayer:
+    Metadata:
+      CreatedBy: AWS SAM CLI sync command
+    Properties:
+      CompatibleRuntimes:
+      - java21
+      ContentUri: D:\Programming\TelRan\Beersheva24\pulse-monitoring\.aws-sam\auto-dependency-layer\PulseValuesReducerFunctioncfd30f6dDepLayer
+      Description: Auto created layer for dependencies of function PulseValuesReducerFunction
+      LayerName: pulseMonitoringbeabc141-PulseValuesReducerFunccfd30f6d-DepLayer
+      RetentionPolicy: Delete
+    Type: AWS::Serverless::LayerVersion
+  RangeDataProviderFunctionfd9e203aDepLayer:
+    Metadata:
+      CreatedBy: AWS SAM CLI sync command
+    Properties:
+      CompatibleRuntimes:
+      - java21
+      ContentUri: D:\Programming\TelRan\Beersheva24\pulse-monitoring\.aws-sam\auto-dependency-layer\RangeDataProviderFunctionfd9e203aDepLayer
+      Description: Auto created layer for dependencies of function RangeDataProviderFunction
+      LayerName: pulseMonitoringbeabc141-RangeDataProviderFunctfd9e203a-DepLayer
+      RetentionPolicy: Delete
+    Type: AWS::Serverless::LayerVersion
+Transform: AWS::Serverless-2016-10-31

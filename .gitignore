@@ -1,0 +1,15 @@
+target\
+.aws-sam\
+.vscode\
+abnormal-values-email-notifier\target\
+abnormal-values-recognizer\target\
+dynamodb-prototype\target\
+email-address-provider\target\
+jump-pulse-recognizer\target\
+last-values-saver-impl\target\
+middleware-data-streams-impl\target\
+pulse-monitoring-api\target\
+pulse-values-imitator\target\
+pulse-values-receiver\target\
+pulse-values-reduces\target\
+range-data-provider\target\

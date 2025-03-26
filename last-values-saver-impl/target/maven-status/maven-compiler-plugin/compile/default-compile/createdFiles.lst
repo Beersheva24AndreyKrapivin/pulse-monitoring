@@ -1,0 +1,3 @@
+telran\monitoring\AbstractDataSaverLogger.class
+telran\monitoring\LatestValuesSaverMap.class
+telran\monitoring\LatestDataSaverS3.class

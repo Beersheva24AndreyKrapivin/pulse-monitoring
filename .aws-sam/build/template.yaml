@@ -1,0 +1,59 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2019-10-31
+Globals:
+  Function:
+    Timeout: 20
+    Runtime: java21
+    MemorySize: 512
+    Architectures:
+    - x86_64
+Resources:
+  JumpRecognizerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: JumpRecognizerFunction
+      Handler: telran.monitoring.App::handleRequest
+      Policies:
+      - Statement:
+        - Effect: Allow
+          Resources: '*'
+          Action:
+          - dynamodb*
+      Environment:
+        Variables:
+          LOGGER_LEVEL: finest
+      Events:
+        DynamoDbItemInsert:
+          Type: DynamoDB
+          Properties:
+            StartingPosition: LATEST
+            BatchSize: 1
+            Stream:
+              Fn::GetAtt:
+              - PulseValueStream
+              - StreamArn
+            FilterCriteria:
+              Filters:
+              - Pattern: '{"eventName": ["INSERT"]}'
+    Metadata:
+      SamResourceId: JumpRecognizerFunction
+  PulseValueStream:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      KeySchema:
+      - AttributeName: patientId
+        KeyType: HASH
+      - AttributeName: timestamp
+        KeyType: RANGE
+      AttributeDefinitions:
+      - AttributeName: patientId
+        AttributeType: N
+      - AttributeName: timestamp
+        AttributeType: N
+      ProvisionedThroughput:
+        ReadCapacityUnits: 0
+        WriteCapacityUnits: 0
+      StreamSpecification:
+        StreamViewType: NEW_IMAGE
+  JumpDataStream:
+    Type: AWS::DynamoDB::Table

@@ -1,0 +1,6 @@
+telran\monitoring\RangeProviderClientHttp.class
+telran\monitoring\RangeProviderClientMap$1.class
+telran\monitoring\RangeProviderClientMap.class
+telran\monitoring\AbstractRangeProviderClient.class
+telran\monitoring\RangeProviderClient.class
+telran\monitoring\AppAbnormalRecognizer.class
