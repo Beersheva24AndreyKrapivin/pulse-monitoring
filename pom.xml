@@ -38,6 +38,9 @@
     <modules>
     <module>middleware-data-streams-impl</module>
     <module>data-provisioning-source</module>
+    <module>pulse-monitoring-api</module>
+    <module>saver-data-impl</module>
+    <module>last-values-saver-impl</module>
     </modules>
 
 </project>
