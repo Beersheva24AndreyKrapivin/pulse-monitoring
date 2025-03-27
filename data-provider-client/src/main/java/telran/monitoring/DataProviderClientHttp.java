@@ -109,7 +109,7 @@ public class DataProviderClientHttp implements DataProviderClient {
             if (response.statusCode() > 399) {
                 throw new Exception(response.body());
             }
-            logger.log("fine", "Range received from Range Provider API service is " + range);
+            logger.log("fine", "Range received from Range Provider API service is ");
             return response.body();
         } catch (Exception e) {
             throw new RuntimeException(e);
