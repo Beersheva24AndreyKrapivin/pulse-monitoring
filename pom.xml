@@ -42,6 +42,7 @@
     <module>saver-data-impl</module>
     <module>last-values-saver-impl</module>
     <module>mail-sender</module>
+    <module>data-provider-client</module>
     </modules>
 
 </project>
