@@ -1,19 +1,14 @@
 package telran.monitoring;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.Map;
+import java.sql.*;
+import java.util.*;
 
-import telran.monitoring.logging.Logger;
-import telran.monitoring.logging.LoggerStandard;
+import telran.monitoring.logging.*;
 
 public abstract class DataSourceSQL implements DataSource {
     private static final String DEFAULT_DRIVER_CLASS_NAME = "org.postgresql.Driver";
     private static final String DEFAULT_USER_NAME = "postgres"; // jdbc:postgresql://localhost:5432/database_name"
-    private static final String DEFAULT_DB_CONNECTION_STRING = "jdbc:postgresql://patients-db.chowuama25mw.us-east-1.rds.amazonaws.com:5432/postgres";
+    private static final String DEFAULT_DB_CONNECTION_STRING = "jdbc:postgresql://patients-db.cwh0qakgm7w0.us-east-1.rds.amazonaws.com:5432/postgres";
     protected Map<String, String> env = System.getenv();
     protected String connectionString = getConnectionString();
     String password = getPassword();
@@ -31,8 +26,9 @@ public abstract class DataSourceSQL implements DataSource {
             Class.forName(driverClassName);
             connection = DriverManager.getConnection(connectionString, username, password);
             statement = connection.prepareStatement(statementString);
+
         } catch (Exception e) {
-            logger.log("svere", "error: " + e);
+            logger.log("severe", "error: " + e.getMessage());
             throw new RuntimeException(e);
         }
     }
@@ -41,8 +37,8 @@ public abstract class DataSourceSQL implements DataSource {
         logger.log("config", "connection string is " + connectionString);
         logger.log("config", "statement string is " + statementString);
         logger.log("config", "driver class name is " + driverClassName);
+        logger.log("config", "username is " + username);
         logger.log("finest", "password is " + password);
-
     }
 
     @Override
@@ -54,20 +50,17 @@ public abstract class DataSourceSQL implements DataSource {
             logger.log("fine", "result returning from resultSetProcessing is " + result);
             return result;
         } catch (SQLException e) {
-            logger.log("svere", "error: " + e);
+            logger.log("severe", "error: " + e);
             throw new RuntimeException(e);
+
         }
+
     }
 
     protected abstract String resultSetProcessing(ResultSet resultSet);
 
     private String getDriverClassName() {
         return env.getOrDefault("DRIVER_CLASS_NAME", DEFAULT_DRIVER_CLASS_NAME);
-    }
-
-    private String getConnectionString() {
-        String connectionString = env.getOrDefault("DB_CONNECTION_STRING", DEFAULT_DB_CONNECTION_STRING);
-        return connectionString;
     }
 
     private String getPassword() {
@@ -81,6 +74,12 @@ public abstract class DataSourceSQL implements DataSource {
     private String getUsername() {
         String username = env.getOrDefault("USERNAME", DEFAULT_USER_NAME);
         return username;
-        
     }
+
+    private String getConnectionString() {
+        String connectionString = env.getOrDefault("DB_CONNECTION_STRING", DEFAULT_DB_CONNECTION_STRING);
+        return connectionString;
+    }
+
+
 }

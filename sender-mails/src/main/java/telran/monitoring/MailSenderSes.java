@@ -1,23 +1,19 @@
 package telran.monitoring;
 
-import java.util.Map;
+import java.util.*;
 
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.ses.SesClient;
-import software.amazon.awssdk.services.ses.model.Body;
-import software.amazon.awssdk.services.ses.model.Content;
-import software.amazon.awssdk.services.ses.model.Destination;
-import software.amazon.awssdk.services.ses.model.Message;
-import software.amazon.awssdk.services.ses.model.SendEmailRequest;
-import software.amazon.awssdk.services.ses.model.SesException;
+import software.amazon.awssdk.services.ses.model.*;
+
 import telran.monitoring.logging.Logger;
 
 public class MailSenderSes implements MailSender {
-    private static final String DEFAULT_ADDRESS_PREFIX = "";
-    private static final String DEFAULT_SENDER_EMAIL_ADDRESS = "kr_andr@mail.ru";
+    private static final String DEFAULT_ADDRESS_PREFIX = "yuriaws25+";
+    private static final String DEFAULT_SENDER_EMAIL_ADDRESS = "yuriaws25@gmail.com";
     private static final String DEFAULT_REGION_FOR_AWS = "us-east-1";
-    SesClient sesClient;
     Logger logger = loggers[0];
+    SesClient sesClient;
     Map<String, String> env = System.getenv();
     String senderEmail = getSenderEmail();
     String addressPrefix = getAddressPrefix();
@@ -25,7 +21,9 @@ public class MailSenderSes implements MailSender {
 
     public MailSenderSes() {
         configLog();
-        sesClient = SesClient.builder().region(region).build();
+        sesClient = SesClient.builder()
+                .region(region)
+                .build();
     }
 
     private void configLog() {
@@ -50,7 +48,7 @@ public class MailSenderSes implements MailSender {
 
             // Send email
             var response = sesClient.sendEmail(emailRequest);
-            logger.log("finest", "response " + response);
+            logger.log("finest", "response: " + response);
 
         } catch (SesException e) {
             logger.log("severe", "error of sending mail: " + e.awsErrorDetails().errorMessage());

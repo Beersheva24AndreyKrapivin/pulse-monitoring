@@ -13,12 +13,12 @@
         <artifactId>pulse-monitoring-parent</artifactId>
         <version>0.0.1</version>
     </parent>
-
     <dependencies>
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
-            <version>42.7.5</version>
+            <version>42.7.3</version>
         </dependency>
     </dependencies>
+
 </project>

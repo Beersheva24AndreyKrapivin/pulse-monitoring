@@ -1,101 +1,135 @@
 package telran.monitoring;
 
-import java.util.ArrayList;
-import java.util.List;
-
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 import org.json.JSONArray;
-import org.json.JSONObject;
-
+import software.amazon.awssdk.core.ResponseBytes;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
-import software.amazon.awssdk.services.s3.model.GetObjectRequest;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.*;
 import telran.monitoring.api.SensorData;
 import telran.monitoring.logging.Logger;
 
 public class LatestDataSaverS3 extends AbstractDataSaverLogger {
-    private String bucketName = System.getenv("S3_BUCKET_NAME");
-    private S3Client s3Client;
-
-    public LatestDataSaverS3(Logger logger) {
-        super(logger);
-        this.s3Client = S3Client.create();
+    private static final String DEFAULT_REGION_FOR_AWS = "us-east-1";
+        Map<String, String> env = System.getenv();
+        Region region = getRegion();
+        String bucketName = getBucketName();
+        S3Client s3Client;
+    
+        public LatestDataSaverS3(Logger logger) {
+            super(logger);
+            logger.log("config", "region is " + region);
+            if (bucketName == null) {
+                logger.log("severe", "error: no value of BUCKET_NAME");
+                throw new RuntimeException("no value of BUCKET_NAME env. variable");
+            }
+            logger.log("config", "bucket name is " + bucketName);
+            s3Client = S3Client.builder()
+                    .region(region)
+                    .build();
+        }
+    
+        private String getBucketName() {
+            return env.get("BUCKET_NAME");
+        }
+    
+        private Region getRegion() {
+            String regionStr = env.getOrDefault("REGION_FOR_AWS", DEFAULT_REGION_FOR_AWS);
+        logger.log("finest", "region value of the REGION_FOR_AWS variable is " + regionStr );
+        return Region.of(regionStr);
     }
 
     @Override
     public void addValue(SensorData sensorData) {
-        String key = sensorData.patientId() + ".json";
-        List<SensorData> dataList = getAllValues(sensorData.patientId());
+        getAndPutList(sensorData, false);
+    }
 
-        dataList.add(sensorData);
-        saveToS3(key, dataList);
+    private void getAndPutList(SensorData sensorData, boolean withClear) {
+        long patientId = sensorData.patientId();
+        List<SensorData> list = getListForPatientId(patientId);
+        if (withClear) {
+            list.clear();
+        }
+        list.add(sensorData);
+        putListForPatientId(patientId, list);
+    }
+
+    private void putListForPatientId(long patientId, List<SensorData> list) {
+        try {
+            s3Client.putObject(
+                    PutObjectRequest.builder()
+                            .bucket(bucketName)
+                            .key(patientId + ".json")
+                            .contentType("application/json") // Important for JSON files
+                            .build(),
+                    RequestBody.fromString(getJsonFromList(list), StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            logger.log("severe", "error: " + e);
+        }
+    }
+
+    private String getJsonFromList(List<SensorData> list) {
+        JSONArray jsonArray = new JSONArray();
+        list.stream().map(SensorData::toString).forEach(jsonArray::put);
+        String res = jsonArray.toString();
+        logger.log("finest", "json content is " + res);
+        return res;
+    }
+
+    private List<SensorData> getListForPatientId(long patientId) {
+        List<SensorData> list = new ArrayList<>();
+        try {
+            ResponseBytes<GetObjectResponse> objectBytes = s3Client.getObjectAsBytes(
+                    GetObjectRequest.builder()
+                            .bucket(bucketName)
+                            .key(patientId + ".json")
+                            .build());
+            String jsonData = objectBytes.asString(StandardCharsets.UTF_8);
+            fillListFromJson(jsonData, list);
+        } catch (NoSuchKeyException e) {
+            logger.log("finest",
+                    String.format("no json file for patient with id %d, empty list will be returned", patientId));
+            
+        } catch (Exception e) {
+            logger.log("severe", "error: " + e);
+            throw e;
+        }
+        return list;
+    }
+
+    private void fillListFromJson(String jsonData, List<SensorData> list) {
+        logger.log("finest", "JSON received in getListFromJson is " + jsonData);
+        JSONArray jsonArray = new JSONArray(jsonData);
+        jsonArray.forEach(jo -> list.add(SensorData.of(jo.toString())));
+        logger.log("finest", "list returned from getListFromJson is " + list);
     }
 
     @Override
     public List<SensorData> getAllValues(long patientId) {
-        String key = patientId + ".json";
-        try {
-            GetObjectRequest request = GetObjectRequest.builder().bucket(bucketName).key(key).build();
-            String jsonContent = s3Client.getObjectAsBytes(request).asUtf8String();
-            return parseSensorDataList(jsonContent);
-        } catch (Exception e) {
-            return new ArrayList<>();
-        }
+        List<SensorData> list = getListForPatientId(patientId);
+        logger.log("finest", "received list in getAllValues is " + list);
+        return list;
     }
 
     @Override
     public SensorData getLastValue(long patientId) {
-        List<SensorData> dataList = getAllValues(patientId);
-        return dataList.isEmpty() ? null : dataList.get(dataList.size() - 1);
+        List<SensorData> list = getListForPatientId(patientId);
+        logger.log("finest", "received list in getAllValues is " + list);
+        return list.isEmpty() ? null : list.getLast();
     }
 
     @Override
     public void clearValues(long patientId) {
-        String key = patientId + ".json";
-        try {
-            s3Client.deleteObject(DeleteObjectRequest.builder().bucket(bucketName).key(key).build());
-        } catch (Exception e) {
-            logger.log("severe", "Failed to delete S3 file: " + e.getMessage());
-        }
+        List<SensorData> list = getListForPatientId(patientId);
+        list.clear();
+        putListForPatientId(patientId, list);
     }
 
     @Override
     public void clearAndAddValue(long patientId, SensorData sensorData) {
-        String key = patientId + ".json";
-        saveToS3(key, List.of(sensorData));
-    }
-
-    @Override
-    public List<SensorData> getNLastValues(long patientId, int n) {
-        List<SensorData> dataList = getAllValues(patientId);
-        int start = Math.max(0, dataList.size() - n);
-        return dataList.subList(start, dataList.size());
-    }
-
-    private void saveToS3(String key, List<SensorData> dataList) {
-        String jsonContent = new JSONArray(dataList).toString();
-        PutObjectRequest request = PutObjectRequest.builder()
-                .bucket(bucketName)
-                .key(key)
-                .contentType("application/json")
-                .build();
-
-        s3Client.putObject(request, software.amazon.awssdk.core.sync.RequestBody.fromString(jsonContent));
-    }
-
-    private List<SensorData> parseSensorDataList(String jsonContent) {
-        List<SensorData> result = new ArrayList<>();
-        JSONArray jsonArray = new JSONArray(jsonContent);
-
-        for (int i = 0; i < jsonArray.length(); i++) {
-            JSONObject obj = jsonArray.getJSONObject(i);
-            result.add(new SensorData(
-                    obj.getLong("patientId"),
-                    obj.getInt("value"),
-                    obj.getLong("timestamp")
-            ));
-        }
-        return result;
+        getAndPutList(sensorData, true);
     }
 
 }
