@@ -1,10 +1,6 @@
 package telran.monitoring;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.NoSuchElementException;
-
-import org.json.JSONObject;
+import java.util.*;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
@@ -13,16 +9,23 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent
 
 import telran.monitoring.logging.*;
 
-public class AppEmailAddressProvider implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
+public class AppEmailProvider implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
 
-    private static final String DEFAULT_USER_NAME = "postgres"; 
-    private static final String DEFAULT_DB_CONNECTION_STRING = "jdbc:postgresql://patients-db.chowuama25mw.us-east-1.rds.amazonaws.com:5432/postgres";
-    Map<String, String> env = System.getenv();
-    String connectionStr = getConnectionString();
-    String username = getUsername();
-    String password = getPassword();
-    Logger logger = new LoggerStandard("email-address-provider");
-    DataSource dataSource = new DataSource(connectionStr, username, password, logger);
+    protected static final String DEFAULT_DATA_SOURCE_CLASS_NAME = "telran.monitoring.DatSourceSqlEmail";
+        Map<String, String> env = System.getenv();
+        String dataSourceClassName = getDataSourceClassName();
+    
+        Logger logger = new LoggerStandard("range-data-provider");
+        DataSource dataSource;
+    
+        public AppEmailProvider() {
+            logger.log("config", "Data Source Class Name is " + dataSourceClassName);
+            dataSource = DataSource.getDataSource(dataSourceClassName, logger);
+        }
+    
+        private String getDataSourceClassName() {
+            return env.getOrDefault("DATA_SOURCE_CLASS_NAME", DEFAULT_DATA_SOURCE_CLASS_NAME);
+    }
 
     @Override
     public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent input, Context context) {
@@ -45,11 +48,11 @@ public class AppEmailAddressProvider implements RequestHandler<APIGatewayProxyRe
             } catch (NumberFormatException e) {
                 throw new IllegalArgumentException("patient id must be number");
             }
-            String email = dataSource.getEmail(patientId);
-            String output = emailToJsonString(email);
+            String email = dataSource.getData(patientId);
+
             response
                     .withStatusCode(200)
-                    .withBody(output);
+                    .withBody(email);
         } catch (NoSuchElementException e) {
             response
                     .withBody(e.toString())
@@ -66,29 +69,10 @@ public class AppEmailAddressProvider implements RequestHandler<APIGatewayProxyRe
         return response;
     }
 
-    private String emailToJsonString(String email) {
-        JSONObject jsonObj = new JSONObject();
-        jsonObj.put("email", email);
-        String output = jsonObj.toString();
-        return output;
-    }
+    
 
-    private String getPassword() {
-        String password = env.get("DB_PASSWORD");
-        if (password == null) {
-            throw new RuntimeException("password must be specified in environment variable");
-        }
-        return password;
-    }
+    
 
-    private String getUsername() {
-        String username = env.getOrDefault("USERNAME", DEFAULT_USER_NAME);
-        return username;
-    }
-
-    private String getConnectionString() {
-        String connectionString = env.getOrDefault("DB_CONNECTION_STRING", DEFAULT_DB_CONNECTION_STRING);
-        return connectionString;
-    }
+   
 
 }

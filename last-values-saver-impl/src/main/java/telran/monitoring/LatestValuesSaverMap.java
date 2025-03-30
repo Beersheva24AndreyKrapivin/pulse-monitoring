@@ -6,12 +6,12 @@ import telran.monitoring.api.*;
 import telran.monitoring.logging.Logger;
 
 public class LatestValuesSaverMap extends AbstractDataSaverLogger{
-    public LatestValuesSaverMap(Logger logger) {
+    protected LatestValuesSaverMap(Logger logger) {
         super(logger);
+        
     }
 
     private HashMap<Long, List<SensorData>> history = new HashMap<>();
-
     @Override
     public void addValue(SensorData sensorData) {
        history.computeIfAbsent(sensorData.patientId(), (k) -> new LinkedList<SensorData>()).add(sensorData);
@@ -48,11 +48,5 @@ public class LatestValuesSaverMap extends AbstractDataSaverLogger{
        patientHistory.add(sensorData);
     }
 
-    @Override
-    public List<SensorData> getNLastValues(long patientId, int n) {
-        List<SensorData> list = history.getOrDefault(patientId, Collections.emptyList());
-        int size = list.size();
-        return list.subList(Math.max(0, size - n), size);
-    }
 
 }

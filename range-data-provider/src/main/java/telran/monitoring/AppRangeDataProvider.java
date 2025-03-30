@@ -1,30 +1,26 @@
 package telran.monitoring;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.NoSuchElementException;
+import java.util.*;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 
-import telran.monitoring.api.Range;
 import telran.monitoring.logging.*;
 
 public class AppRangeDataProvider implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
-    private static final String DEFAULT_USER_NAME = "postgres"; // jdbc:postgresql://localhost:5432/database_name"
-    private static final String DEFAULT_DB_CONNECTION_STRING = "jdbc:postgresql://patients-db.chowuama25mw.us-east-1.rds.amazonaws.com:5432/postgres";
-    Map<String, String> env = System.getenv();                  
-    String connectionStr = getConnectionString();
-    String username = getUsername();
-    String password = getPassword();
+    protected static final String DEFAULT_DATA_SOURCE_CLASS_NAME = "telran.monitoring.DataSourceSqlRange";
+    Map<String, String> env = System.getenv();
+    
+    String dataSourceClassName = getDataSourceClassName();
     Logger logger = new LoggerStandard("range-data-provider");
-    DataSource dataSource = new DataSource(connectionStr, username, password, logger);
+    DataSource dataSource;
+    
 
     @Override
     public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent input, Context context) {
-
+        dataSource = DataSource.getDataSource(dataSourceClassName, logger);
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
 
@@ -43,11 +39,11 @@ public class AppRangeDataProvider implements RequestHandler<APIGatewayProxyReque
             } catch (NumberFormatException e) {
                 throw new IllegalArgumentException("patient id must be number");
             }
-            Range range = dataSource.getRange(patientId);
-            String output = range.toString();
+           String range = dataSource.getData(patientId);
+           
             response
                     .withStatusCode(200)
-                    .withBody(output);
+                    .withBody(range);
         } catch (NoSuchElementException e) {
             response
                     .withBody(e.toString())
@@ -64,22 +60,9 @@ public class AppRangeDataProvider implements RequestHandler<APIGatewayProxyReque
         return response;
     }
 
-    private String getPassword() {
-        String password = env.get("DB_PASSWORD");
-        if (password == null) {
-            throw new RuntimeException("password must be specified in environment variable");
-        }
-        return password;
-    }
-
-    private String getUsername() {
-        String username = env.getOrDefault("USERNAME", DEFAULT_USER_NAME);
-        return username;
-    }
-
-    private String getConnectionString() {
-        String connectionString = env.getOrDefault("DB_CONNECTION_STRING", DEFAULT_DB_CONNECTION_STRING);
-        return connectionString;
-    }
+    
+    private String getDataSourceClassName() {
+        return env.getOrDefault("DATA_SOURCE_CLASS_NAME", DEFAULT_DATA_SOURCE_CLASS_NAME);
+}
 
 }

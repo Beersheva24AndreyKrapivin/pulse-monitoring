@@ -14,7 +14,7 @@ import telran.monitoring.logging.*;
 
 public class AppAbnormalRecognizer {
     private static final String DEFAULT_STREAM_NAME = "abnormal-pulse-values";
-    private static final String DEFAULT_RANGE_PROVIDER_CLASS = "telran.monitoring.RangeProviderClientHttp";
+    private static final String DEFAULT_RANGE_PROVIDER_CLASS = "telran.monitoring.DataProviderClientHttp";
     private static final String DEFAULT_STREAM_CLASS_NAME = "telran.monitoring.DynamoDbAbnormalPulseValueStream";
 
     Map<String, String> env = System.getenv();
@@ -23,26 +23,36 @@ public class AppAbnormalRecognizer {
     String streamClassName = getStreamClassName();
     Logger logger = new LoggerStandard(streamName);
     MiddlewareDataStream<AbnormalPulseValue> dataStream;
-    RangeProviderClient providerClient;
-
-    @SuppressWarnings("unchecked")
-    public AppAbnormalRecognizer() {
-        logger.log("config", "Stream name is " + streamName);
-        logger.log("config", "Stream class name is " + streamClassName);
-        logger.log("config", "Range Provider Class Name is " + providerClientClassName);
-        try {
-
-            dataStream = (MiddlewareDataStream<AbnormalPulseValue>) MiddlewareDataStreamFactory.getStream(
-                    streamClassName,
-                    streamName);
-            providerClient = (RangeProviderClient) Class.forName(providerClientClassName).getConstructor(Logger.class)
-                    .newInstance(logger);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+    DataProviderClient providerClient;
+    private String providerClientConnectionString = getProviderClientConectionString();
+    
+        @SuppressWarnings("unchecked")
+        public AppAbnormalRecognizer() {
+            logger.log("config", "Stream name is " + streamName);
+            logger.log("config", "Stream class name is " + streamClassName);
+            logger.log("config", "Range Provider Class Name is " + providerClientClassName);
+            try {
+    
+                dataStream = (MiddlewareDataStream<AbnormalPulseValue>) MiddlewareDataStreamFactory.getStream(
+                        streamClassName,
+                        streamName);
+                providerClient = DataProviderClient.getDataProviderClient(providerClientClassName, logger,
+                        providerClientConnectionString);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
         }
-    }
-
-    private String getProviderClientClassName() {
+    
+        private String getProviderClientConectionString() {
+            String res =  env.get("PROVIDER_CLIENT_CONNECTION_STRING");
+            if (res == null) {
+                logger.log("severe", "error: PROVIDER_CLIENT_CONNECTION_STRING env. variable must exist");
+                throw new RuntimeException("PROVIDER_CLIENT_CONNECTION_STRING env. variable must exist");
+            }
+            return res;
+        }
+    
+        private String getProviderClientClassName() {
         String res = env.getOrDefault("RANGE_PROVIDER_CLASS", DEFAULT_RANGE_PROVIDER_CLASS);
         return res;
     }
@@ -88,7 +98,8 @@ public class AppAbnormalRecognizer {
         int pulseValue = sensorData.value();
         AbnormalPulseValue abnormalPulseValue = null;
         try {
-            Range range = providerClient.getRange(patientId);
+            String rangeJson = providerClient.getDataForPatient(patientId);
+            Range range = Range.getRangeFromJSON(rangeJson);
             int min = range.min();
             int max = range.max();
             logger.log("finest", "returned from Range provider client: " + range);
@@ -109,4 +120,5 @@ public class AppAbnormalRecognizer {
         SensorData sensorData = new SensorData(patientId, value, timestamp);
         return sensorData;
     }
+
 }
